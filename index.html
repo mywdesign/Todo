@@ -26,6 +26,20 @@
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/react-redux/6.0.0/react-redux.min.js"></script>
 		<script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
 		<script type="text/babel">
+			// Utils
+			const getVisibleTodos = (todos, filter) => {
+				switch (filter) {
+					case 'SHOW_ALL':
+						return todos;
+					case 'SHOW_COMPLETED':
+						return todos.filter(t => t.completed);
+					case 'SHOW_ACTIVE':
+						return todos.filter(t => !t.completed);
+				}
+			};
+
+			const getActiveTodos = todos => todos.filter(t => !t.completed);
+
 			// Reducers
 			const todo = (state, action) => {
 				switch (action.type) {
@@ -90,6 +104,72 @@
 			const { Component } = React;
 			const { Provider, connect } = ReactRedux;
 
+			// AddTodo Input
+
+			const AddTodo = ({ dispatch }) => {
+				const keyUpHandler = evt => {
+					const ENTER = 13;
+					if (evt.which === ENTER && input.value) {
+						// hit enter, create new item if field isn't empty
+						dispatch(addTodo(input.value));
+						input.value = '';
+					}
+				};
+				let input;
+				return (
+					<header className="header">
+						<h1>todos</h1>
+						<input
+							autofocus
+							className="new-todo"
+							placeholder="What needs to be done?"
+							ref={node => {
+								input = node;
+							}}
+							onKeyDown={keyUpHandler}
+						/>
+					</header>
+				);
+			};
+			const ConnectedAddTodo = connect()(AddTodo);
+
+			// Todo list related
+
+			const Todo = ({ onClick, completed, text }) => (
+				<li className={completed ? 'completed' : ''}>
+					<div className="view">
+						<input onClick={onClick} className="toggle" type="checkbox" checked={completed} />
+						<label>{text}</label>
+					</div>
+				</li>
+			);
+
+			const TodoList = ({ todos, onTodoClick }) => (
+				<section className="main">
+					<input className="toggle-all" type="checkbox" />
+					<ul className="todo-list">
+						{todos.map(todo => (
+							<Todo key={todo.id} onClick={() => onTodoClick(todo.id)} {...todo} />
+						))}
+					</ul>
+				</section>
+			);
+
+			const VisibleTodoList = connect(
+				// mapStateToProps
+				state => ({
+					todos: getVisibleTodos(state.todos, state.visibilityFilter)
+				}),
+				// mapDispatchToProps
+				dispatch => ({
+					onTodoClick: id => {
+						dispatch(toggleTodo(id));
+					}
+				})
+			)(TodoList);
+
+			// Footer Component Related
+
 			const Link = ({ active, children, onClick }) => {
 				const clickLink = e => {
 					e.preventDefault();
@@ -121,8 +201,13 @@
 				})
 			)(Link);
 
-			const Footer = () => (
+			const Footer = ({ activeTodos }) => (
 				<footer className="footer">
+					<span class="todo-count">
+						<strong>{activeTodos.length} </strong>
+						<span>items </span>
+						<span>left</span>
+					</span>
 					<ul className="filters">
 						<FilterLink filter="SHOW_ALL">All</FilterLink>
 						<FilterLink filter="SHOW_ACTIVE">Active</FilterLink>
@@ -131,81 +216,17 @@
 				</footer>
 			);
 
-			const Todo = ({ onClick, completed, text }) => (
-				<li className={completed ? 'completed' : ''}>
-					<div className="view">
-						<input onClick={onClick} className="toggle" type="checkbox" checked={completed} />
-						<label>{text}</label>
-					</div>
-				</li>
-			);
+			const ConnectedFooter = connect(state => ({
+				activeTodos: getActiveTodos(state.todos)
+			}))(Footer);
 
-			const TodoList = ({ todos, onTodoClick }) => (
-				<section className="main">
-					<input className="toggle-all" type="checkbox" />
-					<ul className="todo-list">
-						{todos.map(todo => (
-							<Todo key={todo.id} onClick={() => onTodoClick(todo.id)} {...todo} />
-						))}
-					</ul>
-				</section>
-			);
-
-			let AddTodo = ({ dispatch }) => {
-				const keyUpHandler = evt => {
-					const ENTER = 13;
-					if (evt.which === ENTER && input.value) {
-						// hit enter, create new item if field isn't empty
-						dispatch(addTodo(input.value));
-						input.value = '';
-					}
-				};
-				let input;
-				return (
-					<header className="header">
-						<h1>todos</h1>
-						<input
-							autofocus
-							className="new-todo"
-							placeholder="What needs to be done?"
-							ref={node => {
-								input = node;
-							}}
-							onKeyDown={keyUpHandler}
-						/>
-					</header>
-				);
-			};
-			AddTodo = connect()(AddTodo);
-
-			const getVisibleTodos = (todos, filter) => {
-				switch (filter) {
-					case 'SHOW_ALL':
-						return todos;
-					case 'SHOW_COMPLETED':
-						return todos.filter(t => t.completed);
-					case 'SHOW_ACTIVE':
-						return todos.filter(t => !t.completed);
-				}
-			};
-			const VisibleTodoList = connect(
-				// mapStateToProps
-				state => ({
-					todos: getVisibleTodos(state.todos, state.visibilityFilter)
-				}),
-				// mapDispatchToProps
-				dispatch => ({
-					onTodoClick: id => {
-						dispatch(toggleTodo(id));
-					}
-				})
-			)(TodoList);
+			// Todo App
 
 			const TodoApp = () => (
 				<section className="todoapp">
-					<AddTodo />
+					<ConnectedAddTodo />
 					<VisibleTodoList />
-					<Footer />
+					<ConnectedFooter />
 				</section>
 			);
 
